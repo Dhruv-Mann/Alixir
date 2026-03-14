@@ -1,0 +1,18 @@
+# Alixir — Python Dependencies
+#
+# Install all at once with:
+#   pip install -r requirements.txt
+#
+# Phase annotations show when each dependency becomes active.
+
+# ── Phase 1: Video rendering engine ──────────────────────────────────────────
+moviepy==2.1.2          # In-Python video editing; wraps ffmpeg under the hood
+
+# ── Phase 2: Data validation / schema enforcement ────────────────────────────
+pydantic==2.11.1        # Strict JSON schema validation between LLM and tools
+
+# ── Phase 3: Local LLM communication ─────────────────────────────────────────
+ollama==0.4.8           # Official Ollama Python client (talks to local server)
+
+# ── Phase 4: Audio transcription ─────────────────────────────────────────────
+faster-whisper==1.1.1   # CTranslate2-based Whisper — fast, low VRAM footprint
