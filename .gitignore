@@ -1,0 +1,27 @@
+# Python virtual environment
+.venv/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local editor/system files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Build/test/tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local data artifacts (keep folder placeholders)
+data/input/*
+!data/input/.gitkeep
+data/output/*
+!data/output/.gitkeep
+
+# Alixir beginner explanation docs (do not push)
+*_explained.md
+EXPLAINED.md
