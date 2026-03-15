@@ -1,26 +1,25 @@
-# main.py  —  Alixir | Phase 1: The "Dumb" Cut
+# main.py  —  Alixir | Phase 2: Pydantic Validation + Dummy Router
 #
 # PURPOSE:
-#   This is the Phase 1 runner. Its only job is to prove that our video
-#   cutting tool works end-to-end before we introduce any AI or routing.
+#   This runner no longer calls the video tool directly.
+#   Instead, it simulates what the future LLM will do in Phase 3:
 #
-#   Think of this like a "hello world" for the pipeline:
-#       Input video  →  hardcoded timestamps  →  cut clip  →  output file
+#       dummy JSON plan -> Pydantic validation -> router -> tool execution
 #
-#   In Phase 4, this file will be replaced by the full agentic loop where
-#   the timestamps come from the LLM rather than being typed by hand.
+#   This lets us prove the data-contract and routing layers work before we
+#   connect the local Ollama model.
 
 import os
 import sys
 
-# ── Import our first tool from the /tools directory ──
-# Because tools/__init__.py exists, Python treats /tools as a package,
-# letting us use clean dot-notation imports.
-from tools.video_cutter import cut_video_segment
+from pydantic import ValidationError
+
+from core.router import execute_edit_plan
+from core.schemas import EditDecisionList
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  HARDCODED CONFIGURATION  (Phase 1 only — replaced by LLM output in Phase 3)
+#  HARDCODED CONFIGURATION  (Phase 2 dummy payload — replaced by Ollama later)
 # ════════════════════════════════════════════════════════════════════════════
 
 # Path to the source video you want to cut.
@@ -28,12 +27,30 @@ from tools.video_cutter import cut_video_segment
 INPUT_VIDEO = os.path.join("data", "input", "sample.mp4")
 
 # Where the trimmed output should be saved.
-OUTPUT_VIDEO = os.path.join("data", "output", "phase1_cut.mp4")
+OUTPUT_VIDEO = os.path.join("data", "output", "phase2_cut.mp4")
 
 # The time window we want to keep, in seconds.
 # Example: cut from the 5-second mark to the 15-second mark.
 START_TIME = 5.0   # seconds
 END_TIME   = 15.0  # seconds
+
+
+# This dummy payload mirrors the shape that Ollama will produce in Phase 3.
+DUMMY_EDIT_PLAN = {
+    "phase": "phase_2",
+    "user_request": "Cut the input video from 5 seconds to 15 seconds.",
+    "actions": [
+        {
+            "tool_name": "cut_video_segment",
+            "input_path": INPUT_VIDEO,
+            "output_path": OUTPUT_VIDEO,
+            "parameters": {
+                "start_time": START_TIME,
+                "end_time": END_TIME,
+            },
+        }
+    ],
+}
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -42,12 +59,12 @@ END_TIME   = 15.0  # seconds
 
 def main():
     """
-    Phase 1 runner: calls cut_video_segment with hardcoded values.
+    Phase 2 runner: validates a dummy plan and routes it to the correct tool.
     Returns exit code 0 on success, 1 on any handled error.
     """
 
     print("=" * 60)
-    print("  Alixir — Phase 1: Hardcoded Video Cut")
+    print("  Alixir — Phase 2: Pydantic Validation + Dummy Router")
     print("=" * 60)
     print(f"  Input  : {INPUT_VIDEO}")
     print(f"  Output : {OUTPUT_VIDEO}")
@@ -55,21 +72,26 @@ def main():
     print("=" * 60)
 
     try:
-        # ── Call the tool. In later phases this call will originate from
-        #    the router, which will receive its arguments from Pydantic. ──
-        result_path = cut_video_segment(
-            input_path=INPUT_VIDEO,
-            output_path=OUTPUT_VIDEO,
-            start_time=START_TIME,
-            end_time=END_TIME,
-        )
+        # ── Step 1: Validate the dummy JSON against the strict Pydantic schema ──
+        validated_plan = EditDecisionList.model_validate(DUMMY_EDIT_PLAN)
+
+        print(f"[main] Validated {len(validated_plan.actions)} action(s).")
+
+        # ── Step 2: Hand the validated plan to the router for execution ──
+        result_paths = execute_edit_plan(validated_plan)
 
         print()
-        print(f"[main] Phase 1 complete. Output file: {result_path}")
+        print(f"[main] Phase 2 complete. Output file: {result_paths[-1]}")
         return 0
 
+    except ValidationError as e:
+        # The dummy payload shape did not match our strict schema.
+        print("\n[main] ERROR — Payload failed Pydantic validation.")
+        print(e)
+        return 1
+
     except FileNotFoundError as e:
-        # User forgot to put a video in data/input/ — give a helpful message.
+        # The tool layer still validates real file existence at runtime.
         print(f"\n[main] ERROR — {e}")
         print(
             "[main] TIP: Place a test .mp4 at 'data/input/sample.mp4' "
@@ -78,8 +100,7 @@ def main():
         return 1
 
     except ValueError as e:
-        # Timestamp logic error — either our hardcoded values are wrong,
-        # or the video is shorter than expected.
+        # Either the router saw an unregistered tool or the tool rejected values.
         print(f"\n[main] ERROR — {e}")
         return 1
 
