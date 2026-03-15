@@ -1,25 +1,23 @@
-# main.py  —  Alixir | Phase 2: Pydantic Validation + Dummy Router
+# main.py  —  Alixir | Phase 3: Local Ollama Integration
 #
 # PURPOSE:
-#   This runner no longer calls the video tool directly.
-#   Instead, it simulates what the future LLM will do in Phase 3:
+#   This runner asks the local Ollama model to generate a JSON edit plan,
+#   validates that plan with Pydantic, and then executes it through the router.
 #
-#       dummy JSON plan -> Pydantic validation -> router -> tool execution
-#
-#   This lets us prove the data-contract and routing layers work before we
-#   connect the local Ollama model.
+#   The data path is now:
+#       system prompt + user prompt -> Ollama -> validated JSON plan -> router
 
 import os
 import sys
 
 from pydantic import ValidationError
 
+from core.ollama_client import generate_edit_plan
 from core.router import execute_edit_plan
-from core.schemas import EditDecisionList
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  HARDCODED CONFIGURATION  (Phase 2 dummy payload — replaced by Ollama later)
+#  HARDCODED CONFIGURATION  (Phase 3 test input for the local model)
 # ════════════════════════════════════════════════════════════════════════════
 
 # Path to the source video you want to cut.
@@ -27,30 +25,16 @@ from core.schemas import EditDecisionList
 INPUT_VIDEO = os.path.join("data", "input", "sample.mp4")
 
 # Where the trimmed output should be saved.
-OUTPUT_VIDEO = os.path.join("data", "output", "phase2_cut.mp4")
+OUTPUT_VIDEO = os.path.join("data", "output", "phase3_cut.mp4")
 
-# The time window we want to keep, in seconds.
-# Example: cut from the 5-second mark to the 15-second mark.
-START_TIME = 5.0   # seconds
-END_TIME   = 15.0  # seconds
+# The local model already installed in Ollama.
+OLLAMA_MODEL = "qwen2.5-coder:7b"
 
+# The system prompt file that defines the planner's behavioral rules.
+SYSTEM_PROMPT_PATH = os.path.join("prompts", "edit_planner_system_prompt.txt")
 
-# This dummy payload mirrors the shape that Ollama will produce in Phase 3.
-DUMMY_EDIT_PLAN = {
-    "phase": "phase_2",
-    "user_request": "Cut the input video from 5 seconds to 15 seconds.",
-    "actions": [
-        {
-            "tool_name": "cut_video_segment",
-            "input_path": INPUT_VIDEO,
-            "output_path": OUTPUT_VIDEO,
-            "parameters": {
-                "start_time": START_TIME,
-                "end_time": END_TIME,
-            },
-        }
-    ],
-}
+# A simple natural-language request for testing the full model path.
+USER_REQUEST = "Cut the input video from 5 seconds to 15 seconds."
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -59,21 +43,28 @@ DUMMY_EDIT_PLAN = {
 
 def main():
     """
-    Phase 2 runner: validates a dummy plan and routes it to the correct tool.
+    Phase 3 runner: asks Ollama for a plan, validates it, then routes it.
     Returns exit code 0 on success, 1 on any handled error.
     """
 
     print("=" * 60)
-    print("  Alixir — Phase 2: Pydantic Validation + Dummy Router")
+    print("  Alixir — Phase 3: Local Ollama Integration")
     print("=" * 60)
+    print(f"  Model  : {OLLAMA_MODEL}")
     print(f"  Input  : {INPUT_VIDEO}")
     print(f"  Output : {OUTPUT_VIDEO}")
-    print(f"  Range  : {START_TIME}s  →  {END_TIME}s")
+    print(f"  Request: {USER_REQUEST}")
     print("=" * 60)
 
     try:
-        # ── Step 1: Validate the dummy JSON against the strict Pydantic schema ──
-        validated_plan = EditDecisionList.model_validate(DUMMY_EDIT_PLAN)
+        # ── Step 1: Ask the local model for a JSON plan and validate it ──
+        validated_plan = generate_edit_plan(
+            model_name=OLLAMA_MODEL,
+            system_prompt_path=SYSTEM_PROMPT_PATH,
+            user_request=USER_REQUEST,
+            input_path=INPUT_VIDEO,
+            output_path=OUTPUT_VIDEO,
+        )
 
         print(f"[main] Validated {len(validated_plan.actions)} action(s).")
 
@@ -81,13 +72,18 @@ def main():
         result_paths = execute_edit_plan(validated_plan)
 
         print()
-        print(f"[main] Phase 2 complete. Output file: {result_paths[-1]}")
+        print(f"[main] Phase 3 complete. Output file: {result_paths[-1]}")
         return 0
 
     except ValidationError as e:
-        # The dummy payload shape did not match our strict schema.
-        print("\n[main] ERROR — Payload failed Pydantic validation.")
+        # Ollama responded, but its JSON did not satisfy the schema contract.
+        print("\n[main] ERROR — Ollama output failed Pydantic validation.")
         print(e)
+        return 1
+
+    except RuntimeError as e:
+        # Covers connection failures, empty responses, or invalid JSON text.
+        print(f"\n[main] ERROR — {e}")
         return 1
 
     except FileNotFoundError as e:
