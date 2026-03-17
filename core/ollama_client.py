@@ -1,12 +1,15 @@
 # core/ollama_client.py
 #
 # PURPOSE:
-#   This file is the Phase 3 bridge between the local Ollama server and the
+#   This file is the bridge between the local Ollama server and the
 #   strict Pydantic tool-planning contract used by Alixir.
 #
+#   Phase 3+: Ollama -> JSON plan -> Pydantic validation -> router
+#   Phase 4+: Adds optional transcript context to improve plan accuracy.
+#
 #   The key workflow is:
-#       load system prompt -> build user prompt -> call Ollama once
-#       -> parse model text into JSON -> validate with Pydantic
+#       load system prompt -> build user prompt (+ optional transcript)
+#       -> call Ollama once -> parse model text into JSON -> validate with Pydantic
 #
 # MEMORY NOTE:
 #   We keep the model warm briefly to avoid repeated cold-load CUDA failures on
@@ -90,29 +93,40 @@ def build_user_prompt(
     user_request: str,
     input_path: str,
     output_path: str,
+    transcript: str = None,
 ) -> str:
     """
     Build the concrete planning prompt sent to the model.
 
     Keep the prompt short and concrete so the local model spends less context
     budget on instructions and more on producing the edit decision.
+
+    If a transcript is provided (Phase 4+), it is included to help guide cutting decisions.
     """
 
-    return (
+    prompt = (
         "Plan one local video edit request using the available tool.\n\n"
         f"User request: {user_request}\n"
         f"Input path: {input_path}\n"
         f"Output path: {output_path}\n\n"
+    )
+
+    if transcript:
+        prompt += f"Video transcript (first ~2000 chars):\n{transcript}\n\n"
+
+    prompt += (
         "Available tool:\n"
         "- cut_video_segment(input_path, output_path, start_time, end_time)\n\n"
         "Output requirements:\n"
-        "- Set phase to \"phase_3\".\n"
+        "- Set phase to \"phase_4\".\n"
         "- Use tool_name \"cut_video_segment\".\n"
         "- Use the exact input_path and output_path above.\n"
         "- Put cut parameters inside the nested parameters object.\n"
         "- Use numeric seconds for start_time and end_time.\n"
         "- Choose the most direct single cut that satisfies the request.\n"
     )
+
+    return prompt
 
 
 def extract_json_text(raw_response: str) -> str:
@@ -145,10 +159,27 @@ def generate_edit_plan(
     user_request: str,
     input_path: str,
     output_path: str,
+    transcript: str = None,
     ollama_host: str = "http://127.0.0.1:11434",
 ) -> EditDecisionList:
     """
     Ask the local Ollama model for a JSON edit plan and validate it.
+
+    Args:
+        model_name: Ollama model identifier (e.g., "qwen2.5-coder:7b").
+        system_prompt_path: Path to the system prompt file.
+        user_request: Human-readable editing request.
+        input_path: Path to the source video.
+        output_path: Path where the output should be saved.
+        transcript: Optional transcribed audio text (Phase 4+) to guide planning.
+        ollama_host: Ollama server URL (default: local).
+
+    Returns:
+        EditDecisionList: Validated plan ready for execution.
+
+    Raises:
+        RuntimeError: If Ollama call fails or model is unavailable.
+        ValidationError: If model output does not match schema.
     """
 
     system_prompt = load_system_prompt(system_prompt_path)
@@ -156,6 +187,7 @@ def generate_edit_plan(
         user_request=user_request,
         input_path=input_path,
         output_path=output_path,
+        transcript=transcript,
     )
 
     client = Client(host=ollama_host)
