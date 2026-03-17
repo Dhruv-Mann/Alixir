@@ -8,9 +8,9 @@
 #   That gives us a safety gate:
 #       raw JSON -> Pydantic validation -> safe Python objects -> router -> tool
 #
-# PHASE 3 GOAL:
-#   We still support only one tool: cut_video_segment.
-#   The difference is that the local LLM now produces JSON against this schema.
+# PHASE EVOLUTION:
+#   Phase 3: Local LLM produces JSON against schema. Supports cut_video_segment.
+#   Phase 4: Adds transcription layer. Expanded to support phase_3 and phase_4 outputs.
 #   In later phases, new tool names and parameter models can be added here.
 
 from typing import Literal
@@ -79,13 +79,13 @@ class EditDecisionList(BaseModel):
     """
     The full validated plan emitted by the agent for one editing request.
 
-    In Phase 3, the local Ollama model must emit JSON that matches this exact
+    In Phase 3 and later, the local Ollama model must emit JSON that matches this exact
     structure before the router is allowed to execute anything.
     """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
-    phase: Literal["phase_3"] = Field(
+    phase: Literal["phase_3", "phase_4"] = Field(
         ...,
         description="Marks which development phase produced this payload.",
     )
