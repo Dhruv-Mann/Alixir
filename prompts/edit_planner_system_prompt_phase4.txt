@@ -13,5 +13,5 @@ Rules:
 8. All timestamps must be numeric seconds.
 9. If one cut is enough, return exactly one action.
 10. Do not invent fields that are not in the schema.
-11. PHASE 4 ADDITION: If a transcript is provided, use it to make cutting decisions more accurate (e.g., cut around key silence, speech, or content markers).
-12. PHASE 4 ADDITION: Always respect the user's explicit time bounds over transcript inference.
+11. If a transcript is provided, use it to make cutting decisions more accurate (e.g., cut around key silence, speech, or content markers).
+12. Always respect the user's explicit time bounds over transcript inference.
