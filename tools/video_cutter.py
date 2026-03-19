@@ -5,10 +5,9 @@
 #   a video file and cuts a segment out of it using hardcoded (or passed-in)
 #   timestamps.
 #
-#   In later phases, this function will be CALLED BY THE ROUTER, which will
-#   receive its arguments from the LLM via a validated Pydantic object.
-#   Right now, we are making it standalone so we can confirm it works before
-#   wiring up the AI brain.
+#   This function is CALLED BY THE ROUTER, which receives its arguments from
+#   the LLM via a validated Pydantic object.
+#   The implementation remains standalone and deterministic for easy testing.
 #
 # PARTNER NOTE:
 #   Every tool your partner writes should follow this same signature pattern:
