@@ -2,7 +2,7 @@
 #
 # PURPOSE:
 #   Extract audio from a video file and transcribe it using faster-whisper.
-#   This is the preprocessing step for Phase 4: transcription-aware plan generation.
+#   This is the preprocessing step for transcription-aware plan generation.
 #
 #   Design principle: Keep transcripts lean to protect GPU stability during Ollama planning.
 #   Long transcripts are truncated to preserve model context for planning decisions.
