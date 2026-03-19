@@ -1,4 +1,4 @@
-# main.py  —  Alixir | Phase 4: Transcription-Aware Plan Generation
+# main.py  —  Alixir | Transcription-Aware Plan Generation
 #
 # PURPOSE:
 #   This runner extracts and transcribes audio from a video, then asks the local Ollama
@@ -20,7 +20,7 @@ from core.router import execute_edit_plan
 
 
 # ════════════════════════════════════════════════════════════════════════════
-#  HARDCODED CONFIGURATION  (Phase 4 test input)
+#  HARDCODED CONFIGURATION  (Local test input)
 # ════════════════════════════════════════════════════════════════════════════
 
 # Path to the source video you want to cut.
@@ -33,7 +33,7 @@ OUTPUT_VIDEO = os.path.join("data", "output", "phase4_cut.mp4")
 # The local model already installed in Ollama.
 OLLAMA_MODEL = "qwen2.5-coder:7b"
 
-# The system prompt file that defines the planner's behavioral rules (Phase 4 version).
+# The system prompt file that defines the planner's behavioral rules.
 SYSTEM_PROMPT_PATH = os.path.join("prompts", "edit_planner_system_prompt_phase4.txt")
 
 # A simple natural-language request for testing the full model path.
@@ -46,12 +46,12 @@ USER_REQUEST = "Cut the input video from 5 seconds to 15 seconds."
 
 def main():
     """
-    Phase 4 runner: transcribe audio, ask Ollama for a plan, validate, then route.
+    Runner: transcribe audio, ask Ollama for a plan, validate, then route.
     Returns exit code 0 on success, 1 on any handled error.
     """
 
     print("=" * 60)
-    print("  Alixir — Phase 4: Transcription-Aware Plan Generation")
+    print("  Alixir — Transcription-Aware Plan Generation")
     print("=" * 60)
     print(f"  Model  : {OLLAMA_MODEL}")
     print(f"  Input  : {INPUT_VIDEO}")
@@ -80,7 +80,7 @@ def main():
         result_paths = execute_edit_plan(validated_plan)
 
         print()
-        print(f"[main] Phase 4 complete. Output file: {result_paths[-1]}")
+        print(f"[main] Complete. Output file: {result_paths[-1]}")
         return 0
 
     except FileNotFoundError as e:
