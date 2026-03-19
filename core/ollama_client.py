@@ -4,8 +4,8 @@
 #   This file is the bridge between the local Ollama server and the
 #   strict Pydantic tool-planning contract used by Alixir.
 #
-#   Phase 3+: Ollama -> JSON plan -> Pydantic validation -> router
-#   Phase 4+: Adds optional transcript context to improve plan accuracy.
+#   Ollama -> JSON plan -> Pydantic validation -> router
+#   Optional transcript context improves planning accuracy when available.
 #
 #   The key workflow is:
 #       load system prompt -> build user prompt (+ optional transcript)
@@ -101,7 +101,7 @@ def build_user_prompt(
     Keep the prompt short and concrete so the local model spends less context
     budget on instructions and more on producing the edit decision.
 
-    If a transcript is provided (Phase 4+), it is included to help guide cutting decisions.
+    If a transcript is provided, it is included to help guide cutting decisions.
     """
 
     prompt = (
@@ -171,7 +171,7 @@ def generate_edit_plan(
         user_request: Human-readable editing request.
         input_path: Path to the source video.
         output_path: Path where the output should be saved.
-        transcript: Optional transcribed audio text (Phase 4+) to guide planning.
+        transcript: Optional transcribed audio text to guide planning.
         ollama_host: Ollama server URL (default: local).
 
     Returns:
